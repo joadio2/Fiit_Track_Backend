@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int               @id @default(autoincrement())
+  googleId         String?           @unique
+  email            String            @unique
+  name             String
+  familyName       String
+  picture          String?
+  locale           String?
+  password         String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  routines         Routine[]
+  goals            Goal[]
+  verification     VerificationCode? @relation("UserVerification")
+  tokens           UserToken[]       @relation("UserToken")
+  routineExercises RoutineExercise[]
+  exerciseLogs     ExerciseLog[]
+
+  
+}
+
+model Bodypart {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  exercises Exercise[]
+  routines  Routine[]
+}
+
+model TrainingType {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+}
+
+model Exercise {
+  id               String            @id @unique
+  name             String
+  bodypartId       Int
+  equipment        String?
+  gifUrl           String?
+  instructions     String[]
+  secondaryMuscles String[]
+  target           String?
+  bodypart         Bodypart          @relation(fields: [bodypartId], references: [id])
+  routineExercises RoutineExercise[]
+  goals            Goal[]
+  exerciseLogs     ExerciseLog[]
+}
+
+model Routine {
+  id           Int               @id @default(autoincrement())
+  name         String
+  description  String?
+  userId       Int
+  bodypartId   Int
+  bodypart     Bodypart          @relation(fields: [bodypartId], references: [id])
+  routineType  String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises    RoutineExercise[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  exerciseLogs ExerciseLog[]
+
+  @@index([userId])  
+}
+
+model RoutineExercise {
+  id         Int      @id @default(autoincrement())
+  routineId  Int
+  exerciseId String
+  userId     Int
+
+  user       User     @relation(fields: [userId], references: [id])
+  routine    Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  orderIndex Int?
+}
+
+model ExerciseLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  routineId   Int
+  exerciseId  String
+  reps        Int
+  weight      Float
+  notes       String?
+  restSeconds Int?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+  routine     Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exercise    Exercise @relation(fields: [exerciseId], references: [id])
+}
+
+model Goal {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  exerciseId   String
+  targetReps   Int?
+  targetWeight Float?
+  trackReps    Boolean?
+  trackWeight  Boolean?
+  targetDate   DateTime
+  isCompleted   Boolean  @default(false)
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+  exercise     Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@index([userId, exerciseId])  
+}
+
+model VerificationCode {
+  id        String   @id @default(uuid())
+  userId    Int
+  code      String
+  expiresAt DateTime
+  user      User     @relation("UserVerification", fields: [userId], references: [id])
+
+  @@unique([userId])
+}
+
+model UserToken {
+  id        Int      @id @default(autoincrement())
+  token     String
+  userId    Int
+  user      User     @relation("UserToken", fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  ip        String?
+  userAgent String?
+}
+
